@@ -73,10 +73,22 @@ restricted members cannot authorize it.
 
 ## Cloud plugins
 
-After the actual service passes health and discovery checks:
+The shared backend is deployed at <https://cli-plugins.onrender.com> on one
+Singapore Starter instance (512 MiB, 0.5 CPU) with a 1 GB persistent disk.
+The September 30, 2026 deployment passed native startup probes, all three
+OAuth discovery/access-gate checks, and an actual service restart. OAuth
+clients registered before the restart remained usable afterward. Idle memory
+measured approximately 65 MiB; provider workloads still need measurement.
+
+Three separate private cloud plugins have been saved through Plugin Creator.
+Their provider sign-ins, native connected-account display and fresh cloud-chat
+reads remain acceptance checks. Creating the plugins does not establish those
+connections.
+
+To package plugins against this verified backend:
 
 ```sh
-npm run package-plugins -- https://YOUR-SERVICE.onrender.com /path/to/archives
+npm run package-plugins -- https://cli-plugins.onrender.com /path/to/archives
 ```
 
 This builds three independent portable plugin ZIPs, each pointing to its own
@@ -96,9 +108,22 @@ cd apps/teams-cli/reader && go test ./...
 Current local checks: 6 OAuth/MCP/storage integration tests, 42 Python tests
 (including the original 30 GitHub tests), and 2 Teams Go tests pass. Dependency
 audit: no reported Node vulnerabilities. Native macOS `ntn` version/help and
-unauthenticated remote login initialization have been tested. Hosted Linux
-execution, real provider sign-ins, persistent restart and fresh cloud-chat
-reads remain acceptance checks until deployment is completed.
+unauthenticated remote login initialization have been tested. The hosted Linux
+backend has passed startup and encrypted client-storage restart checks. Real
+provider sign-ins, provider credential survival after restart and fresh
+cloud-chat reads remain unverified.
+
+The deployment smoke check uses HTTP requests without browser automation:
+
+```sh
+python3 scripts/cloud-smoke.py --origin https://cli-plugins.onrender.com --mode prepare --state-file /private/path/smoke.json
+render restart YOUR_SERVICE_ID --confirm
+# Wait for a new backend-ready log entry before verifying.
+python3 scripts/cloud-smoke.py --origin https://cli-plugins.onrender.com --mode verify --state-file /private/path/smoke.json
+```
+
+This check verifies persisted OAuth client metadata. It deliberately does not
+claim that any provider account is connected.
 
 ## License and provenance
 
