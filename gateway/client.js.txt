@@ -1,0 +1,18 @@
+const el=id=>document.getElementById(id);let timer;
+async function action(op){
+  try{
+    const mutation=['connect','disconnect'].includes(op);
+    const r=await fetch('/api/'+op,{method:mutation?'POST':'GET',headers:mutation?{'X-Github-CLI-Action':'1'}:{},credentials:'same-origin',cache:'no-store'});
+    const data=await r.json();
+    if(!data.ok){el('state').textContent=data.error?.message??'Sign in as the Site owner to see connection status.';el('diagnostics').textContent=JSON.stringify(data.error??data,null,2);el('connect').disabled=true;el('disconnect').disabled=true;return;}
+    if(op!=='status'){await action('status');return;}
+    const s=data.result;const active=s.account?.connected;const login=s.login??{};
+    el('state').textContent=active?'GitHub credential saved.':login.state==='pending'?'Waiting for GitHub authorisation.':'GitHub is not connected.';
+    el('account').textContent=s.account?`${s.account.login} · GitHub ID ${s.account.id}`:'No verified GitHub account.';
+    el('connect').textContent=active?'Reconnect GitHub':'Connect GitHub';el('connect').disabled=login.state==='pending';el('disconnect').disabled=!active&&login.state!=='pending';
+    el('device').hidden=!login.user_code;el('code').textContent=login.user_code??'';
+    el('diagnostics').textContent=JSON.stringify({native_gh_version:s.native_gh_version,read_only_enforced:s.read_only_enforced,login_state:login.state,error:login.error??null},null,2);
+    clearTimeout(timer);if(login.state==='pending')timer=setTimeout(()=>action('status'),3000);
+  }catch{el('state').textContent='Connection status is temporarily unavailable.';}
+}
+el('connect').onclick=()=>action('connect');el('disconnect').onclick=()=>action('disconnect');el('refresh').onclick=()=>action('status');action('status');

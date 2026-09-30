@@ -1,0 +1,8 @@
+runtime-secrets/
+*.sqlite*
+__pycache__/
+.pytest_cache/
+.env*
+.venv/
+**/node_modules/
+**/dist/

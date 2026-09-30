@@ -1,0 +1,9 @@
+{
+  "name": "github-cli-gateway",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build-gateway.mjs",
+    "test": "node --test test-gateway.mjs"
+  }
+}

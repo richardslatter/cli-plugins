@@ -1,0 +1,32 @@
+# Last fallback: an always-on Linux host, including a NAS with amd64 containers.
+# Expose through a managed HTTPS reverse proxy; never expose an unauthenticated MCP.
+services:
+  github-cli:
+    build: .
+    platform: linux/amd64
+    restart: unless-stopped
+    read_only: true
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      OWNER_EMAIL: ${OWNER_EMAIL:?Set the verified private Site owner email}
+      DATABASE_PATH: /var/data/github-cli.sqlite
+      BRIDGE_KEY_FILE: /run/secrets/bridge-key.b64
+      CREDENTIAL_KEY_FILE: /run/secrets/credential-key.b64
+    volumes: ["state:/var/data"]
+    tmpfs: ["/tmp:size=16777216,mode=1777"]
+    shm_size: 16m
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 64
+    secrets:
+      - bridge-key.b64
+      - credential-key.b64
+secrets:
+  bridge-key.b64:
+    file: ./runtime-secrets/bridge-key.b64
+  credential-key.b64:
+    file: ./runtime-secrets/credential-key.b64
+volumes:
+  state:
