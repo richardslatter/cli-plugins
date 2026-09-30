@@ -94,8 +94,8 @@ The shared backend is hosted at <https://cli-plugins.fly.dev>. The three
 private plugin packages keep their existing identities and bind to replacement
 Fly cloud app registrations.
 A plugin package's website URL does not change the cloud app's MCP endpoint;
-create replacement development registrations for the Fly origin, then package
-their verified app IDs. The previous Render registrations remain available for
+The replacement development connections are named **Teams CLI (Fly)**,
+**GitHub CLI (Fly)**, and **Notion CLI (Fly)**. Package their verified app IDs. The previous Render registrations remain available for
 reference; their provider sessions cannot be used on Fly.
 
 The previous Render service was unavailable during migration, so its live
