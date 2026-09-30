@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+*.log
+credentials.json
+accounts.json
+login-status.json
+login.lock

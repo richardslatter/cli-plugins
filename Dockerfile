@@ -1,13 +1,25 @@
-FROM python:3.13-slim-bookworm
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+FROM golang:1.26.8-bookworm AS teams-builder
+WORKDIR /build
+COPY apps/teams-cli/reader/go.mod apps/teams-cli/reader/go.sum ./
+RUN go mod download
+COPY apps/teams-cli/reader/ ./
+RUN go test ./... && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /teams-bridge .
+
+FROM node:22.23.1-bookworm-slim
+ENV NODE_ENV=production DATA_DIR=/var/data PORT=10000 PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY install_gh.py /app/install_gh.py
-RUN python install_gh.py && /usr/local/bin/gh --version
-COPY requirements.lock /app/requirements.lock
-RUN pip install --no-cache-dir -r requirements.lock && useradd --uid 10001 --create-home service && mkdir /var/data && chown service:service /var/data
-COPY core.py security.py login.py app.py /app/
-USER 10001:10001
-ENV DATABASE_PATH=/var/data/github-cli.sqlite
-EXPOSE 8000
-CMD ["uvicorn","app:app","--host","0.0.0.0","--port","8000","--workers","1","--no-access-log"]
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates python3 python3-venv && rm -rf /var/lib/apt/lists/*
+COPY apps/github-cli/install_gh.py apps/notion-cli/install_ntn.py /tmp/install/
+RUN python3 /tmp/install/install_gh.py && python3 /tmp/install/install_ntn.py && gh --version && ntn --version && rm -rf /tmp/install
+COPY backend/requirements.lock ./backend/requirements.lock
+RUN python3 -m venv /opt/venv && /opt/venv/bin/pip install --no-cache-dir -r backend/requirements.lock
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+COPY backend/ ./backend/
+COPY apps/ ./apps/
+COPY public/ ./public/
+COPY --from=teams-builder /teams-bridge /app/bin/teams-bridge
+RUN mkdir -p /var/data && chown node:node /var/data
+USER node
+EXPOSE 10000
+CMD ["node","backend/src/server.mjs"]

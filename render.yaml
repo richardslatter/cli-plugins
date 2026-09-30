@@ -1,27 +1,27 @@
-# Deployment handoff only. Requires a connected Render account, an accessible
-# private source repository, managed secret files, and explicit cost approval.
+# Paid durable deployment. Apply after reviewing the compute and disk price.
 services:
   - type: web
-    name: github-cli-native
+    name: cli-plugins
     runtime: docker
-    plan: 0.5c-512mb
     region: singapore
+    plan: starter
     numInstances: 1
-    healthCheckPath: /health
     dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
     autoDeployTrigger: 'off'
     disk:
-      name: github-cli-encrypted-state
+      name: cli-credentials
       mountPath: /var/data
       sizeGB: 1
     envVars:
-      - key: OWNER_EMAIL
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      - key: TOKEN_ENCRYPTION_KEY
         sync: false
-      - key: BRIDGE_KEY_FILE
-        value: /etc/secrets/bridge-key.b64
-      - key: CREDENTIAL_KEY_FILE
-        value: /etc/secrets/credential-key.b64
-      - key: DATABASE_PATH
-        value: /var/data/github-cli.sqlite
-# Provision the two secret files through Render's secret manager before startup.
-# Do not put their values into this YAML, the repository, prompts, or logs.
+      - key: TEAMS_ACCOUNTS_JSON
+        sync: false
+      - key: GITHUB_ALLOWED_LOGINS
+        sync: false

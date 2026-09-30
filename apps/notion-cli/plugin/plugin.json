@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "notion-cli",
+  "version": "0.2.0",
+  "description": "Search and read pages and data sources with the official Notion CLI.",
+  "author": {
+    "name": "Richard Slatter"
+  },
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Notion CLI",
+        "shortDescription": "Read Notion workspace",
+        "longDescription": "Search and read pages and data sources with the official Notion CLI. Connected accounts are listed in ChatGPT plugin settings. Tools enforce read-only operations on the shared Render backend.",
+        "developerName": "Richard Slatter",
+        "category": "Productivity",
+        "capabilities": [
+          "Interactive"
+        ],
+        "defaultPrompt": [
+          "Show my connected account.",
+          "Find recent pages in my Notion workspace."
+        ],
+        "logo": "./assets/notion-cli.svg",
+        "composerIcon": "./assets/notion-cli.svg"
+      }
+    }
+  }
+}

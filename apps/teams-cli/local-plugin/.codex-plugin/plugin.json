@@ -1,0 +1,29 @@
+{
+  "name": "foss-teams",
+  "version": "0.1.0+codex.20260930021102",
+  "description": "Read Teams chats with a local native CLI and default-browser sign-in.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Teams CLI",
+    "shortDescription": "Read Teams chats",
+    "longDescription": "Read Teams chats and recent messages for locally configured accounts. Sign in with your default browser. Read-only personal integration using the unofficial FOSS Teams API.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Show my Teams accounts and sign-in status.",
+      "Show my Teams chats.",
+      "Read recent messages in a Teams chat."
+    ],
+    "brandColor": "#6264A7",
+    "logo": "./assets/teams-cli.png",
+    "logoDark": "./assets/teams-cli.png",
+    "composerIcon": "./assets/teams-cli.png"
+  },
+  "mcpServers": "./.mcp.json"
+}

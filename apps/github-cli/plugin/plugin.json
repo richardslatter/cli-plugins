@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "github-cli",
+  "version": "0.2.0",
+  "description": "Read repositories, code, issues and pull requests with the official GitHub CLI.",
+  "author": {
+    "name": "Richard Slatter"
+  },
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "GitHub CLI",
+        "shortDescription": "Read GitHub repositories",
+        "longDescription": "Read repositories, code, issues and pull requests with the official GitHub CLI. Connected accounts are listed in ChatGPT plugin settings. Tools enforce read-only operations on the shared Render backend.",
+        "developerName": "Richard Slatter",
+        "category": "Productivity",
+        "capabilities": [
+          "Interactive"
+        ],
+        "defaultPrompt": [
+          "Show my connected account.",
+          "List my GitHub repositories."
+        ],
+        "logo": "./assets/github-cli.svg",
+        "composerIcon": "./assets/github-cli.svg"
+      }
+    }
+  }
+}
