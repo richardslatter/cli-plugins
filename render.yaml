@@ -17,6 +17,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=128
       - key: DATA_DIR
         value: /var/data
       - key: TOKEN_ENCRYPTION_KEY

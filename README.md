@@ -23,8 +23,10 @@ An access token from one app cannot authenticate at another app's endpoint.
 
 ## Deployment
 
-Apply the root `render.yaml` in Rick's selected Render workspace after approving
-hosting costs. It defines exactly one Docker web service in Singapore and a
+Deploy through the official Render CLI and public API after approving hosting
+costs. `scripts/render-provision.py` reuses `render login`, checks for an existing
+service, and creates the Docker service and disk together without browser
+automation. The equivalent root `render.yaml` remains available as IaC. The configuration defines exactly one Docker web service in Singapore and a
 1 GB persistent disk. The initial estimate is USD 7.25/month: USD 7 compute plus
 USD 0.25 disk, excluding taxes, additional bandwidth and build usage. Confirm
 current pricing at <https://render.com/pricing> before applying.
