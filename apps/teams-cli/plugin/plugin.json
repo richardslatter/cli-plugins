@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "teams-cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Read chats through a native Teams reader. Connect each organisation separately in plugin settings.",
   "author": {
     "name": "Richard Slatter"
@@ -11,19 +11,23 @@
       "interface": {
         "displayName": "Teams CLI",
         "shortDescription": "Read Teams chats",
-        "longDescription": "Read chats through a native Teams reader. Connect each organisation separately in plugin settings. Connected accounts are listed in ChatGPT plugin settings. Tools enforce read-only operations on the shared Render backend.",
+        "longDescription": "Read chats through a native Teams reader. Connect each organisation separately in plugin settings. Read-only tools use the account selected for each connection.",
         "developerName": "Richard Slatter",
         "category": "Productivity",
         "capabilities": [
-          "Interactive"
+          "Interactive",
+          "Read"
         ],
         "defaultPrompt": [
           "Show my connected account.",
           "List my recent Teams chats."
         ],
         "logo": "./assets/teams-cli.png",
-        "composerIcon": "./assets/teams-cli.png"
+        "composerIcon": "./assets/teams-cli.png",
+        "websiteURL": "https://cli-plugins.onrender.com/apps/teams-cli"
       }
     }
-  }
+  },
+  "homepage": "https://cli-plugins.onrender.com/apps/teams-cli",
+  "repository": "https://github.com/richardslatter/cli-plugins"
 }

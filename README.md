@@ -17,8 +17,9 @@ CLI integration.
 - `public`: shared connection UI and per-plugin icons.
 
 Each app has its own MCP endpoint at `/apps/<app>/mcp`, OAuth issuer, read scope,
-credential namespace and authenticated `get_profile` tool. ChatGPT can list
-connected accounts in each plugin's settings and select a connection per chat.
+credential namespace and authenticated `get_profile` tool. Once registered as
+a ChatGPT cloud app and bound to the plugin, ChatGPT can list connected accounts
+in its settings and select a connection per chat.
 An access token from one app cannot authenticate at another app's endpoint.
 
 ## Deployment
@@ -80,21 +81,48 @@ OAuth discovery/access-gate checks, and an actual service restart. OAuth
 clients registered before the restart remained usable afterward. Idle memory
 measured approximately 65 MiB; provider workloads still need measurement.
 
-Three separate private cloud plugins have been saved through Plugin Creator.
-Their provider sign-ins, native connected-account display and fresh cloud-chat
-reads remain acceptance checks. Creating the plugins does not establish those
-connections.
+Three separate private plugin packages have been saved through Plugin Creator.
+The initial 0.2.0 packages contain portable MCP configurations, which by
+themselves expose desktop MCP servers. They do not create ChatGPT cloud app
+registrations or account connection controls. Their cloud app bindings,
+provider sign-ins, native connected-account display and fresh cloud-chat reads
+remain acceptance checks.
 
-To package plugins against this verified backend:
+Register each endpoint in ChatGPT developer mode. Open Settings → Security and
+login → Developer mode, then Plugins → plus button. Use OAuth with dynamic
+client registration (DCR); this server advertises its registration endpoint and
+uses public-client PKCE. The endpoint supplies authorization/token discovery.
+If the client offers a registration-method choice, choose DCR.
+
+| Name | MCP endpoint | Read scope |
+| --- | --- | --- |
+| Teams CLI | `https://cli-plugins.onrender.com/apps/teams-cli/mcp` | `teams.read` |
+| GitHub CLI | `https://cli-plugins.onrender.com/apps/github-cli/mcp` | `github.read` |
+| Notion CLI | `https://cli-plugins.onrender.com/apps/notion-cli/mcp` | `notion.read` |
+
+Record the actual registered app ID and its verified endpoint for each app in a
+protected binding file. Do not invent IDs or bind the existing unrelated
+Microsoft Teams, GitHub or Notion connectors. The packaging script consumes a
+JSON object keyed by `teams-cli`, `github-cli` and `notion-cli`, with `id` and
+`endpoint` fields on each value. Keep IDs exactly as supplied by the platform.
+
+Then package the cloud plugin updates:
 
 ```sh
-npm run package-plugins -- https://cli-plugins.onrender.com /path/to/archives
+npm run package-plugins -- https://cli-plugins.onrender.com /path/to/archives --cloud-apps /private/path/verified-bindings.json
 ```
 
-This builds three independent portable plugin ZIPs, each pointing to its own
-verified endpoint. Save them as private plugins with Plugin Creator, install
-and connect each one in ChatGPT, and authorize its provider in your browser.
-Sign-in completion alone does not prove a successful cloud tool call.
+This builds three independent plugin ZIPs with required registered app mappings
+in `.app.json`, synchronized root and compatibility manifests, and empty raw
+MCP declarations to replace the old desktop connections. Update the existing
+private plugins with a release guard; preserve their identities and audience.
+After installation, verify provider sign-in, account labels and an actual cloud
+tool call. Sign-in completion alone does not prove a successful cloud tool call.
+
+Portable MCP clients can explicitly request `--portable` instead. Those packages
+are separate desktop artifacts, not completed ChatGPT cloud app registrations.
+See [OpenAI's packaging guide](https://developers.openai.com/plugins/build/plugins)
+and [connection guide](https://developers.openai.com/plugins/deploy/connect-chatgpt).
 
 ## Validation
 
