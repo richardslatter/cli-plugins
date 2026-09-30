@@ -1,6 +1,5 @@
 """Own a real gh login process. No OAuth client impersonation or token input."""
 import os
-import pty
 import re
 import select
 import shutil
@@ -35,24 +34,28 @@ class Login:
             if self.job and self.job['state']=='pending':
                 self.job['cancel'].set();self.job['state']='cancelled';self.job['user_code']=None
     def _run(self,j):
-        directory=tempfile.mkdtemp(prefix='login-',dir=self.temp_root);master,slave=pty.openpty();p=None
+        directory=tempfile.mkdtemp(prefix='login-',dir=self.temp_root);p=None
         try:
             env=safe_env(directory);env.pop('GH_PROMPT_DISABLED',None)
             # Explicit plaintext storage is confined to verified tmpfs, then encrypted and deleted.
+            # --web supports non-interactive device authorization. A PTY enables
+            # unrelated Git configuration prompts and terminal cursor queries,
+            # which leave a hosted process waiting before it prints a code.
             p=subprocess.Popen([str(self.binary),'auth','login','--hostname','github.com','--git-protocol','https','--web','--skip-ssh-key','--insecure-storage'],
-               cwd=directory,env=env,stdin=slave,stdout=slave,stderr=slave,start_new_session=True)
-            os.close(slave);slave=None;buf='';sent=False
+               cwd=directory,env=env,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,start_new_session=True)
+            buf=''
             while p.poll() is None:
                 if j['cancel'].is_set():raise Fault('login_cancelled','Login cancelled; start a new connection when ready.')
                 if time.time()>j['expires_at']:raise Fault('login_timeout','Login timed out; start a fresh GitHub authorisation.')
-                if select.select([master],[],[],.2)[0]:
-                    try:chunk=os.read(master,4096)
-                    except OSError:break
+                if select.select([p.stdout],[],[],.2)[0]:
+                    chunk=os.read(p.stdout.fileno(),4096)
+                    if not chunk:break
                     buf=(buf+chunk.decode('utf-8','replace'))[-16000:]
-                    code=re.search(r'(?:one-time code|code):\s*([A-Z0-9]{4}-[A-Z0-9]{4})',buf,re.I)
+                    # gh prints either "one-time code: XXXX-XXXX" or
+                    # "One-time code (XXXX-XXXX) copied to clipboard".
+                    code=re.search(r'\bone-time code\s*(?::\s*|\(\s*)([A-Z0-9]{4}-[A-Z0-9]{4})(?![A-Z0-9])',buf,re.I)
                     if code:
-                        with self.lock:j.update(user_code=code.group(1),verification_url='https://github.com/login/device')
-                    if not sent and ('Press Enter' in buf or 'press Enter' in buf):os.write(master,b'\n');sent=True
+                        with self.lock:j.update(user_code=code.group(1).upper(),verification_url='https://github.com/login/device')
             p.wait(timeout=5)
             if p.returncode:raise Fault('login_failed','GitHub CLI login failed or was declined; reconnect to try again.')
             with self.lock:
@@ -72,6 +75,5 @@ class Login:
             with self.lock:j.update(state='failed',user_code=None,error={'code':'login_failed','message':'Login failed. No raw CLI output is logged.'})
         finally:
             if p and p.poll() is None:os.killpg(p.pid,signal.SIGKILL);p.wait()
-            os.close(master)
-            if slave is not None:os.close(slave)
+            if p and p.stdout:p.stdout.close()
             shutil.rmtree(directory)

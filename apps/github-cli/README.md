@@ -11,7 +11,7 @@ GitHub connection must remain private. No GitHub credential is included.
   the release checksums and GitHub's release-asset SHA-256 metadata.
 - 30 local Python tests cover read-only routing, validation, account isolation,
   request signatures/replay, bounded subprocesses, encrypted fixture persistence
-  across a new process, deletion, and PTY fixture login/cancellation.
+  across a new process, deletion, and non-interactive fixture login/cancellation.
 - Six local MCP gateway tests cover the official SDK's initialization/discovery,
   anonymous/wrong-owner rejection, CSRF, unknown tools and blocked backend state.
 - Docker build, Linux service deployment, real hosted GitHub login, persistent

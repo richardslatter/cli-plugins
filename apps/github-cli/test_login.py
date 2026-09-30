@@ -1,4 +1,5 @@
 import sys,time
+import pytest
 from pathlib import Path
 from login import Login
 from security import Store
@@ -14,9 +15,9 @@ def wait_for(predicate):
 def fixture_cli(tmp_path,body):
     p=tmp_path/'fixture-gh';p.write_text('#!'+sys.executable+'\n'+body);p.chmod(0o700);return p
 
-def test_real_pty_fixture_login_encryption_and_cleanup(tmp_path,monkeypatch):
+def test_noninteractive_fixture_login_encryption_and_cleanup(tmp_path,monkeypatch):
     store=Store(tmp_path/'durable'/'db',b'k'*32);ram=tmp_path/'ram-fixture';ram.mkdir()
-    binary=fixture_cli(tmp_path,"import os,pathlib\nprint('! First copy your one-time code: ABCD-1234',flush=True)\nprint('Press Enter to open github.com in your browser',flush=True)\ninput()\npathlib.Path(os.environ['GH_CONFIG_DIR'],'hosts.yml').write_text('github.com:\\n  user: rick-colosl\\n  oauth_token: fixture-token\\n')\n")
+    binary=fixture_cli(tmp_path,"import os,pathlib,sys\nassert not sys.stdin.isatty() and not sys.stdout.isatty()\nprint('! First copy your one-time code: ABCD-1234',flush=True)\npathlib.Path(os.environ['GH_CONFIG_DIR'],'hosts.yml').write_text('github.com:\\n  user: rick-colosl\\n  oauth_token: fixture-token\\n')\n")
     monkeypatch.setattr(GitHub,'run',lambda self,*a:{'id':'123','login':'rick-colosl'})
     login=Login(binary,ram,store);login.start('owner','subject')
     wait_for(lambda:login.status('owner','subject')['state']!='pending')
@@ -26,7 +27,7 @@ def test_real_pty_fixture_login_encryption_and_cleanup(tmp_path,monkeypatch):
     assert b'fixture-token' not in Path(store.path).read_bytes()
     assert login.status('other','subject')=={'state':'idle'}
 
-def test_pty_fixture_wrong_github_account_never_saved(tmp_path,monkeypatch):
+def test_fixture_wrong_github_account_never_saved(tmp_path,monkeypatch):
     store=Store(tmp_path/'db',b'k'*32);ram=tmp_path/'ram';ram.mkdir()
     binary=fixture_cli(tmp_path,"import os,pathlib\npathlib.Path(os.environ['GH_CONFIG_DIR'],'hosts.yml').write_text('github.com:\\n  user: wrong\\n  oauth_token: fixture-token\\n')\n")
     monkeypatch.setattr(GitHub,'run',lambda self,*a:{'id':'999','login':'wrong'})
@@ -35,9 +36,15 @@ def test_pty_fixture_wrong_github_account_never_saved(tmp_path,monkeypatch):
     assert store.identity('owner','subject') is None
     wait_for(lambda:not list(ram.iterdir()))
 
-def test_pty_fixture_cancel_removes_temporary_configuration(tmp_path):
+@pytest.mark.parametrize('prompt',[
+    '! First copy your one-time code: ABCD-1234',
+    '! One-time code (ABCD-1234) copied to clipboard',
+])
+def test_noninteractive_code_formats_and_cancel_cleanup(tmp_path,prompt):
     store=Store(tmp_path/'db',b'k'*32);ram=tmp_path/'ram';ram.mkdir()
-    binary=fixture_cli(tmp_path,"import time\nprint('First copy your one-time code: ABCD-1234',flush=True)\ntime.sleep(10)\n")
+    binary=fixture_cli(tmp_path,"import sys,time\nassert not sys.stdin.isatty() and not sys.stdout.isatty()\nprint("+repr(prompt)+",flush=True)\ntime.sleep(10)\n")
     login=Login(binary,ram,store);login.start('owner','subject');wait_for(lambda:login.status('owner','subject').get('user_code'))
+    assert login.status('owner','subject')['user_code']=='ABCD-1234'
+    assert login.status('owner','subject')['verification_url']=='https://github.com/login/device'
     login.cancel();wait_for(lambda:not list(ram.iterdir()))
     assert store.identity('owner','subject') is None
