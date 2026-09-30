@@ -32,7 +32,7 @@ export function makeApp({vault,origin,adapters,allowLoopback=true,healthy=()=>tr
   app.use(express.json({limit:'128kb'}));
   app.use(express.static(path.join(root,'public'),{dotfiles:'deny',index:false}));
   app.get('/healthz',(_req,res)=>res.status(healthy()?200:503).json({ok:healthy(),service:'cli-plugins',version:'0.2.0',apps:adapters.map(a=>a.id)}));
-  app.get('/',(_req,res)=>res.type('html').send(page(`<section><h2>Connect from ChatGPT</h2><p>Install each plugin separately and connect its accounts from ChatGPT’s plugin settings.</p>${adapters.map(a=>`<p><a href="/apps/${a.id}">${escape(a.name)}</a> — ${escape(a.intro)}</p>`).join('')}</section><footer>Native CLIs on Render · Read-only tools</footer>`)));
+  app.get('/',(_req,res)=>res.type('html').send(page(`<section><h2>Connect from ChatGPT</h2><p>Install each plugin separately and connect its accounts from ChatGPT’s plugin settings.</p>${adapters.map(a=>`<p><a href="/apps/${a.id}">${escape(a.name)}</a> — ${escape(a.intro)}</p>`).join('')}</section><footer>Read-only tools</footer>`)));
   for(const adapter of adapters) {
     const base=`/apps/${adapter.id}`, issuer=new URL(base,origin), resource=new URL(`${base}/mcp`,origin), metadataUrl=getOAuthProtectedResourceMetadataUrl(resource);
     const store=scopedVault(vault,adapter.id), provider=createProvider(store,issuer,{appId:adapter.id,name:adapter.name,scope:adapter.scope,allowLoopback});providers.set(adapter.id,provider);
@@ -110,7 +110,7 @@ if(process.argv[1]&&fileURLToPath(import.meta.url)===path.resolve(process.argv[1
   process.umask(0o077);
   let native;
   try {
-    const origin=new URL(process.env.PUBLIC_URL||process.env.RENDER_EXTERNAL_URL||'');
+    const origin=new URL(process.env.PUBLIC_URL||'');
     if(origin.protocol!=='https:'&&!(process.env.NODE_ENV==='development'&&['127.0.0.1','localhost'].includes(origin.hostname)))throw new Error('Use HTTPS.');
     if(origin.pathname!=='/'||origin.search||origin.hash)throw new Error('PUBLIC_URL must be an origin.');
     const vault=new Vault(path.join(process.env.DATA_DIR||'/var/data','cli-plugins.sqlite'),process.env.TOKEN_ENCRYPTION_KEY);

@@ -32,6 +32,8 @@ for(const app of apps){
     const d=path.join(temporary,app);fs.cpSync(path.join(root,'apps',app,'plugin'),d,{recursive:true});
     const write=(name,data)=>fs.writeFileSync(path.join(d,name),JSON.stringify(data,null,2)+'\n');
     const manifest=JSON.parse(fs.readFileSync(path.join(d,'plugin.json'),'utf8'));
+    manifest.homepage=new URL(`/apps/${app}`,origin).href;
+    manifest.extensions['com.openai'].interface.websiteURL=manifest.homepage;
     if(bindings){
       manifest.extensions['com.openai'].apps='./.app.json';
       manifest.extensions['com.openai'].requires_local_executor=false;

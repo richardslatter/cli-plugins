@@ -1,7 +1,7 @@
 # CLI Plugins
 
 Teams CLI, GitHub CLI and Notion CLI are separate ChatGPT cloud plugins served
-by one Render web service. This repository consolidates the original
+by one Fly.io app in Sydney (`syd`). This repository consolidates the original
 `github-cli-plugin` history with the Teams implementation and official Notion
 CLI integration.
 
@@ -24,30 +24,46 @@ An access token from one app cannot authenticate at another app's endpoint.
 
 ## Deployment
 
-Deploy through the official Render CLI and public API after approving hosting
-costs. `scripts/render-provision.py` reuses `render login`, checks for an existing
-service, and creates the Docker service and disk together without browser
-automation. The equivalent root `render.yaml` remains available as IaC. The configuration defines exactly one Docker web service in Singapore and a
-1 GB persistent disk. The initial estimate is USD 7.25/month: USD 7 compute plus
-USD 0.25 disk, excluding taxes, additional bandwidth and build usage. Confirm
-current pricing at <https://render.com/pricing> before applying.
+The root `fly.toml` runs one shared-CPU Machine with 512 MiB RAM in Sydney,
+with a 1 GB encrypted volume mounted at `/var/data`. Keep exactly one Machine:
+the encrypted SQLite vault requires a single writer, and Fly volumes are local
+to one Machine. The service stays running for OAuth sign-in flows. Automatic
+volume snapshots are retained for five days.
 
-The service needs these private environment variables:
+The app is owned by the personal Fly organisation for
+`richardslatterdev@gmail.com`. Use the official Fly CLI:
+
+```sh
+fly auth whoami
+fly apps create cli-plugins --org personal
+fly volumes create cli_credentials --app cli-plugins --region syd --size 1
+fly secrets import --app cli-plugins < /private/path/fly-secrets.env
+fly deploy --remote-only --ha=false
+```
+
+Create the app and volume only on first setup. For subsequent releases, run
+`fly deploy --remote-only --ha=false` from the repository root. Inspect
+`fly status`, `fly checks list`, and `fly logs` to verify the release.
+`fly.toml` sets `PUBLIC_URL=https://cli-plugins.fly.dev`; change it together with
+the registered MCP endpoints if a custom HTTPS origin is introduced.
+
+The protected secrets file contains these variables, one `NAME=value` per line:
 
 - `TOKEN_ENCRYPTION_KEY`: 32 random bytes encoded as 64 hex characters. Keep a
   protected backup; losing or changing the key makes saved sessions unreadable.
-- `TEAMS_ACCOUNTS_JSON`: array of allowed profiles with `id`, `name`,
-  `tenantName`, `tenantId`, `loginHint`. Configure real accounts in Render only.
+- `TEAMS_ACCOUNTS_JSON`: a JSON array of allowed profiles with `id`, `name`,
+  `tenantName`, `tenantId`, and `loginHint`.
 - `GITHUB_ALLOWED_LOGINS`: comma-separated allowed GitHub usernames.
 
-`RENDER_EXTERNAL_URL` supplies the public origin automatically. `PUBLIC_URL` can
-explicitly override it for a custom HTTPS origin. Account names and credentials
-are never committed. Public landing pages display no saved accounts.
+Import secrets through stdin; never include their values in command arguments
+or commit them. Public landing pages display no saved accounts.
+The container initializes ownership of a newly mounted volume, then drops
+privileges: the backend and native CLIs run as the `node` user.
 
-The root deployment does not use Sites. The old GitHub gateway and standalone
-configuration under `apps/github-cli` are retained for source continuity;
-**do not deploy them**. Start only `node backend/src/server.mjs` with the root
-Dockerfile. Authentication is provided directly by this backend.
+The root deployment starts only `node backend/src/server.mjs`. Historical
+Render provisioning files are archived under `deploy/legacy/render`; the old
+standalone GitHub deployment and Sites gateway under `apps/github-cli` remain
+for source continuity. Deploy the root Dockerfile and Fly configuration.
 
 ## Native execution and credentials
 
@@ -74,19 +90,19 @@ restricted members cannot authorize it.
 
 ## Cloud plugins
 
-The shared backend is deployed at <https://cli-plugins.onrender.com> on one
-Singapore Starter instance (512 MiB, 0.5 CPU) with a 1 GB persistent disk.
-The September 30, 2026 deployment passed native startup probes, all three
-OAuth discovery/access-gate checks, and an actual service restart. OAuth
-clients registered before the restart remained usable afterward. Idle memory
-measured approximately 65 MiB; provider workloads still need measurement.
+The shared backend is hosted at <https://cli-plugins.fly.dev>. The three
+private plugin packages keep their existing identities and bind to replacement
+Fly cloud app registrations.
+A plugin package's website URL does not change the cloud app's MCP endpoint.
+The replacement development connections are named **Teams CLI (Fly)**,
+**GitHub CLI (Fly)**, and **Notion CLI (Fly)**. Package their verified app IDs.
+The previous Render registrations remain available for reference; their provider
+sessions cannot be used on Fly.
 
-Three separate private plugin packages have been saved through Plugin Creator.
-The initial 0.2.0 packages contain portable MCP configurations, which by
-themselves expose desktop MCP servers. They do not create ChatGPT cloud app
-registrations or account connection controls. Their cloud app bindings,
-provider sign-ins, native connected-account display and fresh cloud-chat reads
-remain acceptance checks.
+The previous Render service was unavailable during migration, so its live
+SQLite database could not be exported. The protected encryption-key backup and
+allowed Teams profiles were retained. Provider accounts must reconnect on Fly;
+stale Render OAuth credentials cannot authenticate at the new issuer.
 
 Register each endpoint in ChatGPT developer mode. Open Settings → Security and
 login → Developer mode, then Plugins → plus button. Use OAuth with dynamic
@@ -96,9 +112,9 @@ If the client offers a registration-method choice, choose DCR.
 
 | Name | MCP endpoint | Read scope |
 | --- | --- | --- |
-| Teams CLI | `https://cli-plugins.onrender.com/apps/teams-cli/mcp` | `teams.read` |
-| GitHub CLI | `https://cli-plugins.onrender.com/apps/github-cli/mcp` | `github.read` |
-| Notion CLI | `https://cli-plugins.onrender.com/apps/notion-cli/mcp` | `notion.read` |
+| Teams CLI | `https://cli-plugins.fly.dev/apps/teams-cli/mcp` | `teams.read` |
+| GitHub CLI | `https://cli-plugins.fly.dev/apps/github-cli/mcp` | `github.read` |
+| Notion CLI | `https://cli-plugins.fly.dev/apps/notion-cli/mcp` | `notion.read` |
 
 Record the actual registered app ID and its verified endpoint for each app in a
 protected binding file. Do not invent IDs or bind the existing unrelated
@@ -109,7 +125,7 @@ JSON object keyed by `teams-cli`, `github-cli` and `notion-cli`, with `id` and
 Then package the cloud plugin updates:
 
 ```sh
-npm run package-plugins -- https://cli-plugins.onrender.com /path/to/archives --cloud-apps /private/path/verified-bindings.json
+npm run package-plugins -- https://cli-plugins.fly.dev /path/to/archives --cloud-apps /private/path/verified-bindings.json
 ```
 
 This builds three independent plugin ZIPs with required registered app mappings
@@ -133,21 +149,23 @@ python -m pytest -q tests/test_native.py apps/github-cli/test_backend.py apps/gi
 cd apps/teams-cli/reader && go test ./...
 ```
 
-Current local checks: 6 OAuth/MCP/storage integration tests, 42 Python tests
+Local checks: 6 OAuth/MCP/storage integration tests, 42 Python tests
 (including the original 30 GitHub tests), and 2 Teams Go tests pass. Dependency
 audit: no reported Node vulnerabilities. Native macOS `ntn` version/help and
-unauthenticated remote login initialization have been tested. The hosted Linux
-backend has passed startup and encrypted client-storage restart checks. Real
-provider sign-ins, provider credential survival after restart and fresh
-cloud-chat reads remain unverified.
+unauthenticated remote login initialization have been tested. The September 30,
+2026 Fly deployment passed native startup probes, discovery and anonymous access
+gates for all three apps, and persisted OAuth client checks after an actual
+Machine restart. The backend runs as `node` on a private volume directory
+(mode 700) with a private vault file (mode 600). Provider sign-ins, provider credential survival after
+restart and fresh cloud-chat reads must be verified separately.
 
 The deployment smoke check uses HTTP requests without browser automation:
 
 ```sh
-python3 scripts/cloud-smoke.py --origin https://cli-plugins.onrender.com --mode prepare --state-file /private/path/smoke.json
-render restart YOUR_SERVICE_ID --confirm
+python3 scripts/cloud-smoke.py --origin https://cli-plugins.fly.dev --mode prepare --state-file /private/path/smoke.json
+fly apps restart cli-plugins
 # Wait for a new backend-ready log entry before verifying.
-python3 scripts/cloud-smoke.py --origin https://cli-plugins.onrender.com --mode verify --state-file /private/path/smoke.json
+python3 scripts/cloud-smoke.py --origin https://cli-plugins.fly.dev --mode verify --state-file /private/path/smoke.json
 ```
 
 This check verifies persisted OAuth client metadata. It deliberately does not
