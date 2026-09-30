@@ -8,7 +8,7 @@ RUN go test ./... && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /teams
 FROM node:22.23.1-bookworm-slim
 ENV NODE_ENV=production DATA_DIR=/var/data PORT=10000 PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates python3 python3-venv && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates gosu python3 python3-venv && rm -rf /var/lib/apt/lists/*
 COPY apps/github-cli/install_gh.py apps/notion-cli/install_ntn.py /tmp/install/
 RUN python3 /tmp/install/install_gh.py && python3 /tmp/install/install_ntn.py && gh --version && ntn --version && rm -rf /tmp/install
 COPY backend/requirements.lock ./backend/requirements.lock
@@ -20,6 +20,7 @@ COPY apps/ ./apps/
 COPY public/ ./public/
 COPY --from=teams-builder /teams-bridge /app/bin/teams-bridge
 RUN mkdir -p /var/data && chown node:node /var/data
-USER node
+COPY --chmod=755 scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["docker-entrypoint.sh"]
 EXPOSE 10000
 CMD ["node","backend/src/server.mjs"]
