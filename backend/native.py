@@ -203,7 +203,7 @@ def dispatch(message):
             n,notion,_=ntn(['--version'],d)
             if g or n or not gh.startswith(b'gh version 2.101.0 ') or b'0.23.13' not in notion:
                 raise Fault('native_unavailable','The pinned native CLIs are unavailable.')
-            return {'github':'2.101.0','notion':'0.23.13','credentials':'memory-only scratch'}
+            return {'github':'2.101.0','notion':'0.23.13','credentialScratch':'verified tmpfs' if os.environ.get('NODE_ENV')=='production' else 'development temporary directory'}
     if action=='login_start': return login_start(app,message['flow'])
     if action=='login_status': return login_status(app,message['flow'])
     if action!='read': raise Fault('unknown_action','Unsupported native action.')
